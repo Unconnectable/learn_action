@@ -1,0 +1,40 @@
+# .github/workflows/ci.yml
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    # 修正 1: 使用官方支持的 Ubuntu 最新版 runner
+    runs-on: ubuntu-latest # 推荐使用这个，除非你有自定义 runner
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: 显示 Python 版本
+        # 修正 2: 使用 'run' 关键字来执行 shell 命令
+        run: python --version
+
+      - name: 安装依赖
+        # 修正 3: 确保引号正确匹配
+        run: pip install -r requirements.txt || echo "requirements.txt not found, skipping dependency installation."
+
+      - name: 运行代码
+        # 修正 4: 替换成你实际运行代码的命令
+        # 示例：假设你的主入口文件是 'main.py'
+        run: python main.py # 请根据你的项目实际情况修改此行
+        # 或者如果你想运行一个测试命令：
+        # run: pytest

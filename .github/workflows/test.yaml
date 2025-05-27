@@ -1,0 +1,78 @@
+# .github/workflows/ci.yml
+
+# 这个 'name' 是你的工作流的名称，它会显示在 GitHub Actions 选项卡中。
+# 最好用一个能清晰表达工作流目的的名称。
+name: CI (持续集成)
+
+# 'on' 关键字定义了你的工作流何时会被触发。
+# 它是一个事件列表，当这些事件发生时，工作流就会运行。
+on:
+  # 'push' 事件意味着当有新的提交被推送到仓库时，工作流就会运行。
+  push:
+    # 'branches' 数组指定了只有当推送到这些分支时，工作流才会被触发。
+    # 这里我们只关心 'main' 分支的推送。
+    branches:
+      - main
+  # 'pull_request' 事件意味着当有新的拉取请求被创建或更新时，工作流就会运行。
+  pull_request:
+    # 'branches' 数组也适用于 'pull_request'，
+    # 意味着只有当拉取请求的目标分支是 'main' 时，工作流才会被触发。
+    branches:
+      - main
+
+# 'jobs' 关键字定义了你的工作流中包含的一个或多个“作业”(jobs)。
+# 一个工作流可以包含多个作业，它们可以并行运行，也可以按顺序运行。
+jobs:
+  # 这是一个作业的唯一标识符。你可以给它起一个描述性的名字。
+  # 这个作业将负责检查代码的“构建”或基本健康状况。
+  build-and-test:
+    # 'runs-on' 关键字指定了这个作业将在哪个类型的虚拟机上运行。
+    # GitHub Actions 提供了多种预配置的虚拟机环境，比如 Ubuntu、Windows 和 macOS。
+    # 'ubuntu-latest' 意味着使用最新版的 Ubuntu 操作系统。
+    runs-on: ubuntu-latest
+
+    # 'steps' 关键字定义了该作业中要执行的一系列步骤。
+    # 每个步骤都是一个独立的任务，例如检出代码、设置环境、运行命令等。
+    steps:
+      # 这是第一个步骤：检出你的仓库代码。
+      # 'uses' 关键字允许你使用社区或GitHub官方提供的“actions”(操作)。
+      # 'actions/checkout@v4' 是一个官方操作，它会把你的仓库代码克隆到虚拟机上，
+      # 这样后续的步骤才能访问到你的文件。
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 这是第二个步骤：设置 Python 环境。
+      # 'actions/setup-python@v5' 是另一个官方操作，用于在虚拟机上安装和配置 Python。
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        # 'with' 关键字用于给 action 传递参数。
+        # 'python-version' 参数指定了要安装的 Python 版本。
+        # '3.x' 表示安装最新版的 Python 3。
+        with:
+          python-version: '3.x'
+
+      # 这是第三个步骤：显示当前 Python 版本。
+      # 'run' 关键字允许你在虚拟机上执行任意的 shell 命令。
+      # 这里我们运行 'python --version' 来确认 Python 是否正确安装。
+      - name: 显示 Python 版本
+        run: python --version
+
+      # 这是第四个步骤：安装依赖（如果你的项目有的话）。
+      # 这是一个示例步骤，如果你有 'requirements.txt' 文件，通常会执行此操作。
+      # '-r requirements.txt' 告诉 pip 从文件中读取并安装所有列出的依赖。
+      - name: 安装依赖
+        run: pip install -r requirements.txt || echo "requirements.txt not found, skipping dependency installation."
+        # '|| echo ...' 是一个shell技巧：如果前一个命令失败（例如，没有requirements.txt文件），
+        # 那么就会执行后面的 echo 命令，避免工作流直接失败。
+        # 实际项目中，如果 requirements.txt 是必需的，你应该直接让它失败。
+
+      # 这是第五个步骤：运行测试或任何代码检查。
+      # 这是一个占位符，你可以替换成你的实际测试命令，例如：
+      # - name: 运行单元测试
+      #   run: pytest
+      # 或者：
+      # - name: 运行 Lint 检查
+      #   run: pylint your_module.py
+      - name: 运行简单的代码检查 (占位符)
+        run: echo "这里可以运行你的测试命令或代码检查命令。"
+        # 在实际项目中，你会用类似于 `pytest`、`npm test`、`make build` 等命令替换。
