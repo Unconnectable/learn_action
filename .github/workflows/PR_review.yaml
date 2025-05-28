@@ -3,9 +3,9 @@ name: LLM Code Reviewer (Commit & PR)
 on:
   push:
     branches:
-      - main     # 推送到 main 分支时触发 Commit 审查
+      - main
   pull_request:
-    types: [opened, synchronize]  # PR 打开或更新时触发
+    types: [opened, synchronize]
 
 jobs:
   llm-review:
@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install openai==1.35.6 pygithub requests
+          pip install openai pygithub httpx
 
       - name: Run LLM Review Script
         env:
