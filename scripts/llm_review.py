@@ -2,21 +2,16 @@ import os
 import json
 from github import Github
 from openai import OpenAI
-import requests
 
-# ========================
-# 初始化客户端
-# ========================
-
-# 获取环境变量
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+# 设置 API Key 和 base URL
 LLM_API_KEY = os.getenv("LLM_API_KEY")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REPO_NAME = os.getenv("GITHUB_REPOSITORY")
 
 # 初始化 DeepSeek 客户端
 client = OpenAI(
     api_key=LLM_API_KEY,
-    base_url="https://api.deepseek.com "
+    base_url="https://api.deepseek.com"
 )
 
 # 初始化 GitHub 客户端
@@ -28,10 +23,6 @@ event_path = os.getenv("GITHUB_EVENT_PATH")
 with open(event_path, "r") as f:
     event_data = json.load(f)
 
-
-# ========================
-# LLM 调用函数
-# ========================
 
 def get_llm_review(prompt):
     """调用 DeepSeek 获取评审建议"""
@@ -47,21 +38,20 @@ def get_llm_review(prompt):
     return response.choices[0].message.content.strip()
 
 
-# ========================
 # 处理 Pull Request 事件
-# ========================
-
-def handle_pull_request(pr_number):
+if "pull_request" in event_data:
+    pr_number = event_data["pull_request"]["number"]
     pr = repo.get_pull(pr_number)
     print("🔍 正在分析 Pull Request")
 
     # 获取 PR Diff
-    diff_url = f"https://api.github.com/repos/ {REPO_NAME}/pulls/{pr_number}"
+    diff_url = f"https://api.github.com/repos/{REPO_NAME}/pulls/{pr_number}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
     }
-    diff_content = requests.get(diff_url, headers=headers).text
+    from requests import get
+    diff_content = get(diff_url, headers=headers).text
 
     prompt = f"""
 请分析以下 Pull Request：
@@ -87,12 +77,9 @@ PR 描述: {pr.body or '无'}
     print("✅ PR 评审完成，已提交评论。")
     print(review_text)
 
-
-# ========================
 # 处理 Commit 事件
-# ========================
-
-def handle_commit(after_sha):
+elif event_data.get("ref", "").startswith("refs/heads/"):
+    after_sha = event_data["after"]
     commit = repo.get_commit(after_sha)
     print(f"🔍 正在分析 Commit: {after_sha}")
 
@@ -124,19 +111,6 @@ Date: {commit.commit.author.date}
     commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
     print("✅ Commit 评审完成，已提交评论。")
     print(review_text)
-
-
-# ========================
-# 主逻辑入口
-# ========================
-
-if "pull_request" in event_data:
-    pr_number = event_data["pull_request"]["number"]
-    handle_pull_request(pr_number)
-
-elif event_data.get("ref", "").startswith("refs/heads/"):
-    after_sha = event_data["after"]
-    handle_commit(after_sha)
 
 else:
     print("⚠️ 不支持的事件类型")
