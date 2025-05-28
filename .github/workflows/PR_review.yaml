@@ -26,7 +26,7 @@ jobs:
 
       - name: Run LLM Review Script
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}  # 使用你创建的 Personal Access Token
-          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # DeepSeek 的 API Key
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}   # 这里必须是 GH_PAT
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
         run: |
           python scripts/llm_review.py
