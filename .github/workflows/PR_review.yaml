@@ -1,10 +1,9 @@
 name: LLM Code Reviewer (Commit & PR)
 
-# 同时监听 push（commit）和 pull_request（PR）
 on:
   push:
     branches:
-      - main     # 当提交到 main 分支时触发
+      - main     # 当推送到 main 分支时触发
   pull_request:
     types: [opened, synchronize]  # PR 打开或更新时触发
 
@@ -24,9 +23,13 @@ jobs:
         run: |
           pip install requests pygithub
 
+      - name: Debug - list files
+        run: |
+          ls -R
+
       - name: Run LLM Review Script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # 替换为你自己的 secret 名称
         run: |
-          python .github/scripts/llm_review.py
+          python scripts/llm_review.py
