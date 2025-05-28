@@ -11,7 +11,7 @@ REPO_NAME = os.getenv("GITHUB_REPOSITORY")
 # 初始化 DeepSeek 客户端
 client = OpenAI(
     api_key=LLM_API_KEY,
-    base_url="https://api.deepseek.com "
+    base_url="https://api.deepseek.com"
 )
 
 # 初始化 GitHub 客户端
@@ -45,7 +45,7 @@ if "pull_request" in event_data:
     print("🔍 正在分析 Pull Request")
 
     # 获取 PR Diff
-    diff_url = f"https://api.github.com/repos/ {REPO_NAME}/pulls/{pr_number}"
+    diff_url = f"https://api.github.com/repos/{REPO_NAME}/pulls/{pr_number}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
