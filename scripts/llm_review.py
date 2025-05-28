@@ -1,11 +1,11 @@
 import os
 import json
-import requests
 from github import Github
+from openai import OpenAI
 
 # 获取环境变量
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-LLM_API_KEY = os.getenv("LLM_API_KEY")
+LLM_API_KEY = os.getenv("LLM_API_KEY")  # 即 GitHub Secrets 中的 LLM_DEEPSEEK_TOKEN
 
 # 初始化 GitHub 客户端
 g = Github(GITHUB_TOKEN)
@@ -16,7 +16,7 @@ event_path = os.getenv("GITHUB_EVENT_PATH")
 with open(event_path, "r") as f:
     event_data = json.load(f)
 
-# 判断是否是 PR 事件
+# 判断是否是 Pull Request 事件
 if "pull_request" in event_data:
     pr_number = event_data["pull_request"]["number"]
     pr = repo.get_pull(pr_number)
@@ -28,9 +28,10 @@ if "pull_request" in event_data:
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
     }
-    diff_content = requests.get(diff_url, headers=headers).text
+    from requests import get
+    diff_content = get(diff_url, headers=headers).text
 
-    # 构造 prompt
+    # 构建 Prompt
     prompt = f"""
 请分析以下 Pull Request：
 PR 标题: {pr.title}
@@ -48,41 +49,35 @@ PR 描述: {pr.body or '无'}
 请输出简洁清晰的评审意见。
 """
 
-    # 调用 DeepSeek 示例（可替换为其他模型）
-    response = requests.post(
-        "https://api.deepseek.com/chat/completions ",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {LLM_API_KEY}"
-        },
-        json={
-            "model": "deepseek-coder",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "max_tokens": 800
-        }
+    # 初始化 OpenAI 客户端（使用 DeepSeek）
+    client = OpenAI(api_key=LLM_API_KEY, base_url="https://api.deepseek.com ")
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "你是一个专业的代码审查助手"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        max_tokens=800
     )
 
-    if response.status_code != 200:
-        print("❌ LLM 调用失败:", response.text)
-        exit(1)
+    review_text = response.choices[0].message.content.strip()
 
-    review_text = response.json()["choices"][0]["message"]["content"]
-
-    # 在 PR 下留言
+    # 在 PR 页面添加评论
     pr.create_issue_comment(f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
 
-# 处理 Push 事件（Commit）
-elif event_data["ref"].startswith("refs/heads/"):
+# 处理 Commit 事件
+elif event_data.get("ref", "").startswith("refs/heads/"):
     after_sha = event_data["after"]
     commit = repo.get_commit(after_sha)
     print(f"🔍 正在分析 Commit: {after_sha}")
 
-    # 获取 commit 的修改内容
-    diff = commit.raw_data["files"]
-    diff_str = "\n".join([f"{f['filename']}:\n{f.get('patch', '无 patch 信息')} " for f in diff])
+    # 获取 Commit 内容
+    files = commit.raw_data["files"]
+    diff_str = "\n".join([f"{f['filename']}:\n{f.get('patch', '无 patch 信息')}" for f in files])
 
-    # 构造 prompt
+    # 构造 Prompt
     prompt = f"""
 请分析以下 Git Commit:
 Commit Message: {commit.commit.message}
@@ -101,26 +96,20 @@ Date: {commit.commit.author.date}
 请输出简洁清晰的评审意见。
 """
 
-    # 调用 DeepSeek 示例（可替换为其他模型）
-    response = requests.post(
-        "https://api.deepseek.com/chat/completions ",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {LLM_API_KEY}"
-        },
-        json={
-            "model": "deepseek-coder",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "max_tokens": 600
-        }
+    # 初始化 OpenAI 客户端（使用 DeepSeek）
+    client = OpenAI(api_key=LLM_API_KEY, base_url="https://api.deepseek.com ")
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "你是一个专业的代码审查助手"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        max_tokens=600
     )
 
-    if response.status_code != 200:
-        print("❌ LLM 调用失败:", response.text)
-        exit(1)
-
-    review_text = response.json()["choices"][0]["message"]["content"]
+    review_text = response.choices[0].message.content.strip()
 
     # 在 Commit 页面添加评论
     commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")

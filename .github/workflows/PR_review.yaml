@@ -3,7 +3,7 @@ name: LLM Code Reviewer (Commit & PR)
 on:
   push:
     branches:
-      - main     # 当推送到 main 分支时触发
+      - main     # 推送到 main 分支时触发 Commit 审查
   pull_request:
     types: [opened, synchronize]  # PR 打开或更新时触发
 
@@ -21,15 +21,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests pygithub
-
-      - name: Debug - list files
-        run: |
-          ls -R
+          pip install openai pygithub
 
       - name: Run LLM Review Script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # 替换为你自己的 secret 名称
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # 替换为你的 secret 名称
         run: |
           python scripts/llm_review.py
