@@ -1,11 +1,14 @@
 name: LLM Code Reviewer (Commit & PR)
 
 on:
-  push:
-    branches:
-      - main     # 推送到 main 分支时触发 Commit 审查
+  #push:
+  #  branches:
+  #    - main     # 推送到 main 分支时触发 Commit 审查
   pull_request:
     types: [opened, synchronize]  # PR 打开或更新时触发
+    branches:
+      - "**"  # 表示任意目标分支都触发
+    
 
 jobs:
   llm-review:

@@ -3,15 +3,15 @@ import json
 from github import Github
 from openai import OpenAI
 
-# 设置 API Key 和 base URL
-LLM_API_KEY = os.getenv("LLM_API_KEY")
+# 获取环境变量
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 REPO_NAME = os.getenv("GITHUB_REPOSITORY")
 
 # 初始化 DeepSeek 客户端
 client = OpenAI(
     api_key=LLM_API_KEY,
-    base_url="https://api.deepseek.com"
+    base_url="https://api.deepseek.com "
 )
 
 # 初始化 GitHub 客户端
@@ -38,14 +38,14 @@ def get_llm_review(prompt):
     return response.choices[0].message.content.strip()
 
 
-# 处理 Pull Request 事件
+# 仅处理 Pull Request 事件
 if "pull_request" in event_data:
     pr_number = event_data["pull_request"]["number"]
     pr = repo.get_pull(pr_number)
     print("🔍 正在分析 Pull Request")
 
     # 获取 PR Diff
-    diff_url = f"https://api.github.com/repos/{REPO_NAME}/pulls/{pr_number}"
+    diff_url = f"https://api.github.com/repos/ {REPO_NAME}/pulls/{pr_number}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
@@ -77,41 +77,6 @@ PR 描述: {pr.body or '无'}
     print("✅ PR 评审完成，已提交评论。")
     print(review_text)
 
-# 处理 Commit 事件
-elif event_data.get("ref", "").startswith("refs/heads/"):
-    after_sha = event_data["after"]
-    commit = repo.get_commit(after_sha)
-    print(f"🔍 正在分析 Commit: {after_sha}")
-
-    # 获取 Commit 内容
-    files = commit.raw_data["files"]
-    diff_str = "\n".join([f"{f['filename']}:\n{f.get('patch', '无 patch 信息')}" for f in files])
-
-    prompt = f"""
-请分析以下 Git Commit:
-Commit Message: {commit.commit.message}
-Author: {commit.commit.author.name}
-Date: {commit.commit.author.date}
-
-代码变更（Patch）:
-{diff_str}
-
-请从以下角度给出中文评审建议：
-1. 本次修改是否合理？
-2. 是否引入潜在问题？
-3. 是否有风格不一致？
-4. 是否需要补充文档或注释？
-
-请输出简洁清晰的评审意见。
-"""
-
-    review_text = get_llm_review(prompt)
-
-    # 在 Commit 页面添加评论
-    commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
-    print("✅ Commit 评审完成，已提交评论。")
-    print(review_text)
-
 else:
-    print("⚠️ 不支持的事件类型")
-    exit(1)
+    print("⚠️ 非 Pull Request 事件，跳过执行。")
+    exit(0)
