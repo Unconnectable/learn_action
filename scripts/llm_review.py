@@ -1,11 +1,11 @@
 import os
 import json
 from github import Github
-from openai import OpenAI
+import requests
 
 # 获取环境变量
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-LLM_API_KEY = os.getenv("LLM_DEEPSEEK_TOKEN")  # 注意：这里建议 Secrets 名称是 LLM_DEEPSEEK_TOKEN
+LLM_API_KEY = os.getenv("LLM_DEEPSEEK_TOKEN")  # 注意：Secret 名称应为 LLM_DEEPSEEK_TOKEN
 
 # 初始化 GitHub 客户端
 g = Github(GITHUB_TOKEN)
@@ -16,24 +16,27 @@ event_path = os.getenv("GITHUB_EVENT_PATH")
 with open(event_path, "r") as f:
     event_data = json.load(f)
 
-# 初始化 OpenAI 客户端（使用 DeepSeek）
-client = OpenAI(
-    api_key=LLM_API_KEY,
-    base_url="https://api.deepseek.com "
-)
-
-def get_review_response(prompt):
-    """统一调用 LLM 获取评审意见"""
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[
+def call_deepseek(prompt):
+    """调用 DeepSeek API"""
+    headers = {
+        "Authorization": f"Bearer {LLM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "model": "deepseek-chat",
+        "messages": [
             {"role": "system", "content": "你是一个专业的代码审查助手"},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.5,
-        max_tokens=800
-    )
-    return response.choices[0].message.content.strip()
+        "temperature": 0.5,
+        "max_tokens": 800
+    }
+
+    response = requests.post("https://api.deepseek.com/chat/completions ", headers=headers, json=data)
+    if response.status_code != 200:
+        raise Exception(f"API 调用失败: {response.text}")
+
+    return response.json()["choices"][0]["message"]["content"].strip()
 
 # 判断是否是 Pull Request 事件
 if "pull_request" in event_data:
@@ -47,8 +50,7 @@ if "pull_request" in event_data:
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
     }
-    from requests import get
-    diff_content = get(diff_url, headers=headers).text
+    diff_content = requests.get(diff_url, headers=headers).text
 
     # 构建 Prompt
     prompt = f"""
@@ -68,7 +70,7 @@ PR 描述: {pr.body or '无'}
 请输出简洁清晰的评审意见。
 """
 
-    review_text = get_review_response(prompt)
+    review_text = call_deepseek(prompt)
 
     # 在 PR 页面添加评论
     pr.create_issue_comment(f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
@@ -104,7 +106,7 @@ Date: {commit.commit.author.date}
 请输出简洁清晰的评审意见。
 """
 
-    review_text = get_review_response(prompt)
+    review_text = call_deepseek(prompt)
 
     # 在 Commit 页面添加评论
     commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
