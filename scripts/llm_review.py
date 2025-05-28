@@ -1,58 +1,58 @@
 import os
 import json
 from github import Github
-import requests
+from openai import OpenAI
 
-# 获取环境变量
+# 设置 API Key 和 base URL
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-LLM_API_KEY = os.getenv("LLM_DEEPSEEK_TOKEN")  # 注意：Secret 名称应为 LLM_DEEPSEEK_TOKEN
+REPO_NAME = os.getenv("GITHUB_REPOSITORY")
+
+# 初始化 DeepSeek 客户端
+client = OpenAI(
+    api_key=LLM_API_KEY,
+    base_url="https://api.deepseek.com "
+)
 
 # 初始化 GitHub 客户端
 g = Github(GITHUB_TOKEN)
-repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
+repo = g.get_repo(REPO_NAME)
 
-# 获取事件类型
+# 获取事件数据
 event_path = os.getenv("GITHUB_EVENT_PATH")
 with open(event_path, "r") as f:
     event_data = json.load(f)
 
-def call_deepseek(prompt):
-    """调用 DeepSeek API"""
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    data = {
-        "model": "deepseek-chat",
-        "messages": [
+
+def get_llm_review(prompt):
+    """调用 DeepSeek 获取评审建议"""
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
             {"role": "system", "content": "你是一个专业的代码审查助手"},
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.5,
-        "max_tokens": 800
-    }
+        temperature=0.5,
+        max_tokens=800
+    )
+    return response.choices[0].message.content.strip()
 
-    response = requests.post("https://api.deepseek.com/chat/completions ", headers=headers, json=data)
-    if response.status_code != 200:
-        raise Exception(f"API 调用失败: {response.text}")
 
-    return response.json()["choices"][0]["message"]["content"].strip()
-
-# 判断是否是 Pull Request 事件
+# 处理 Pull Request 事件
 if "pull_request" in event_data:
     pr_number = event_data["pull_request"]["number"]
     pr = repo.get_pull(pr_number)
     print("🔍 正在分析 Pull Request")
 
     # 获取 PR Diff
-    diff_url = f"https://api.github.com/repos/ {os.getenv('GITHUB_REPOSITORY')}/pulls/{pr_number}"
+    diff_url = f"https://api.github.com/repos/ {REPO_NAME}/pulls/{pr_number}"
     headers = {
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
     }
-    diff_content = requests.get(diff_url, headers=headers).text
+    from requests import get
+    diff_content = get(diff_url, headers=headers).text
 
-    # 构建 Prompt
     prompt = f"""
 请分析以下 Pull Request：
 PR 标题: {pr.title}
@@ -70,7 +70,7 @@ PR 描述: {pr.body or '无'}
 请输出简洁清晰的评审意见。
 """
 
-    review_text = call_deepseek(prompt)
+    review_text = get_llm_review(prompt)
 
     # 在 PR 页面添加评论
     pr.create_issue_comment(f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
@@ -87,7 +87,6 @@ elif event_data.get("ref", "").startswith("refs/heads/"):
     files = commit.raw_data["files"]
     diff_str = "\n".join([f"{f['filename']}:\n{f.get('patch', '无 patch 信息')}" for f in files])
 
-    # 构造 Prompt
     prompt = f"""
 请分析以下 Git Commit:
 Commit Message: {commit.commit.message}
@@ -106,7 +105,7 @@ Date: {commit.commit.author.date}
 请输出简洁清晰的评审意见。
 """
 
-    review_text = call_deepseek(prompt)
+    review_text = get_llm_review(prompt)
 
     # 在 Commit 页面添加评论
     commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")

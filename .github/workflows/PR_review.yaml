@@ -21,11 +21,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install openai pygithub
+          pip install --upgrade pip
+          pip install openai==1.35.6 pygithub requests
 
       - name: Run LLM Review Script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # 替换为你的 secret 名称
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
         run: |
           python scripts/llm_review.py
