@@ -5,7 +5,7 @@ from openai import OpenAI
 
 # 获取环境变量
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-LLM_API_KEY = os.getenv("LLM_API_KEY")  # 即 GitHub Secrets 中的 LLM_DEEPSEEK_TOKEN
+LLM_API_KEY = os.getenv("LLM_DEEPSEEK_TOKEN")  # 注意：这里建议 Secrets 名称是 LLM_DEEPSEEK_TOKEN
 
 # 初始化 GitHub 客户端
 g = Github(GITHUB_TOKEN)
@@ -15,6 +15,25 @@ repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
 event_path = os.getenv("GITHUB_EVENT_PATH")
 with open(event_path, "r") as f:
     event_data = json.load(f)
+
+# 初始化 OpenAI 客户端（使用 DeepSeek）
+client = OpenAI(
+    api_key=LLM_API_KEY,
+    base_url="https://api.deepseek.com "
+)
+
+def get_review_response(prompt):
+    """统一调用 LLM 获取评审意见"""
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "你是一个专业的代码审查助手"},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.5,
+        max_tokens=800
+    )
+    return response.choices[0].message.content.strip()
 
 # 判断是否是 Pull Request 事件
 if "pull_request" in event_data:
@@ -49,23 +68,12 @@ PR 描述: {pr.body or '无'}
 请输出简洁清晰的评审意见。
 """
 
-    # 初始化 OpenAI 客户端（使用 DeepSeek）
-    client = OpenAI(api_key=LLM_API_KEY, base_url="https://api.deepseek.com ")
-
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[
-            {"role": "system", "content": "你是一个专业的代码审查助手"},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,
-        max_tokens=800
-    )
-
-    review_text = response.choices[0].message.content.strip()
+    review_text = get_review_response(prompt)
 
     # 在 PR 页面添加评论
     pr.create_issue_comment(f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
+    print("✅ PR 评审完成，已提交评论。")
+    print(review_text)
 
 # 处理 Commit 事件
 elif event_data.get("ref", "").startswith("refs/heads/"):
@@ -96,23 +104,12 @@ Date: {commit.commit.author.date}
 请输出简洁清晰的评审意见。
 """
 
-    # 初始化 OpenAI 客户端（使用 DeepSeek）
-    client = OpenAI(api_key=LLM_API_KEY, base_url="https://api.deepseek.com ")
-
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[
-            {"role": "system", "content": "你是一个专业的代码审查助手"},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5,
-        max_tokens=600
-    )
-
-    review_text = response.choices[0].message.content.strip()
+    review_text = get_review_response(prompt)
 
     # 在 Commit 页面添加评论
     commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
+    print("✅ Commit 评审完成，已提交评论。")
+    print(review_text)
 
 else:
     print("⚠️ 不支持的事件类型")
