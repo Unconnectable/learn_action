@@ -3,21 +3,21 @@ name: LLM Code Reviewer (Commit & PR)
 on:
   push:
     branches:
-      #- main # 推送到 main 分支时触发 Commit 审查
-      - "**" # 表示任意分支都触发
-  pull_request_target:
-    types: [opened, synchronize] # PR 打开或更新时触发
+      - "**"
+  pull_request_target: # <-- 将 pull_request 改为 pull_request_target
+    types: [opened, synchronize]
     branches:
-      - "**" # 表示任意目标分支都触发
+      - "**"
 
 jobs:
   llm-review:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
+        # 注意：使用 pull_request_target 时，如果直接 checkout PR 的 head ref，
         uses: actions/checkout@v4
-        with: 
-          ref: ${{ github.event.pull_request.head.sha }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # 确保 checkout PR 的最新提交
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -31,7 +31,7 @@ jobs:
 
       - name: Run LLM Review Script
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }} # 这里必须是 GH_PAT
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
         run: |
           python scripts/llm_review.py
