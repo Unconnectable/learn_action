@@ -2,6 +2,11 @@ import os
 import json
 from github import Github
 from openai import OpenAI
+import requests
+
+# ========================
+# 初始化客户端
+# ========================
 
 # 获取环境变量
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -24,6 +29,10 @@ with open(event_path, "r") as f:
     event_data = json.load(f)
 
 
+# ========================
+# LLM 调用函数
+# ========================
+
 def get_llm_review(prompt):
     """调用 DeepSeek 获取评审建议"""
     response = client.chat.completions.create(
@@ -38,9 +47,11 @@ def get_llm_review(prompt):
     return response.choices[0].message.content.strip()
 
 
-# 仅处理 Pull Request 事件
-if "pull_request" in event_data:
-    pr_number = event_data["pull_request"]["number"]
+# ========================
+# 处理 Pull Request 事件
+# ========================
+
+def handle_pull_request(pr_number):
     pr = repo.get_pull(pr_number)
     print("🔍 正在分析 Pull Request")
 
@@ -50,8 +61,7 @@ if "pull_request" in event_data:
         "Authorization": f"token {GITHUB_TOKEN}",
         "Accept": "application/vnd.github.v3.diff"
     }
-    from requests import get
-    diff_content = get(diff_url, headers=headers).text
+    diff_content = requests.get(diff_url, headers=headers).text
 
     prompt = f"""
 请分析以下 Pull Request：
@@ -77,6 +87,57 @@ PR 描述: {pr.body or '无'}
     print("✅ PR 评审完成，已提交评论。")
     print(review_text)
 
+
+# ========================
+# 处理 Commit 事件
+# ========================
+
+def handle_commit(after_sha):
+    commit = repo.get_commit(after_sha)
+    print(f"🔍 正在分析 Commit: {after_sha}")
+
+    # 获取 Commit 内容
+    files = commit.raw_data["files"]
+    diff_str = "\n".join([f"{f['filename']}:\n{f.get('patch', '无 patch 信息')}" for f in files])
+
+    prompt = f"""
+请分析以下 Git Commit:
+Commit Message: {commit.commit.message}
+Author: {commit.commit.author.name}
+Date: {commit.commit.author.date}
+
+代码变更（Patch）:
+{diff_str}
+
+请从以下角度给出中文评审建议：
+1. 本次修改是否合理？
+2. 是否引入潜在问题？
+3. 是否有风格不一致？
+4. 是否需要补充文档或注释？
+
+请输出简洁清晰的评审意见。
+"""
+
+    review_text = get_llm_review(prompt)
+
+    # 在 Commit 页面添加评论
+    commit.create_comment(body=f"🤖 **LLM Code Reviewer**: \n\n{review_text}")
+    print("✅ Commit 评审完成，已提交评论。")
+    print(review_text)
+
+
+# ========================
+# 主逻辑入口
+# ========================
+
+if "pull_request" in event_data:
+    pr_number = event_data["pull_request"]["number"]
+    handle_pull_request(pr_number)
+
+elif event_data.get("ref", "").startswith("refs/heads/"):
+    after_sha = event_data["after"]
+    handle_commit(after_sha)
+
 else:
-    print("⚠️ 非 Pull Request 事件，跳过执行。")
-    exit(0)
+    print("⚠️ 不支持的事件类型")
+    exit(1)

@@ -1,14 +1,14 @@
 name: LLM Code Reviewer (Commit & PR)
 
 on:
-  #push:
-  #  branches:
-  #    - main     # 推送到 main 分支时触发 Commit 审查
-  pull_request:
-    types: [opened, synchronize]  # PR 打开或更新时触发
+  push:
     branches:
-      - "**"  # 表示任意目标分支都触发
-    
+      #- main # 推送到 main 分支时触发 Commit 审查
+      - "**" # 表示任意分支都触发
+  pull_request:
+    types: [opened, synchronize] # PR 打开或更新时触发
+    branches:
+      - "**" # 表示任意目标分支都触发
 
 jobs:
   llm-review:
@@ -20,7 +20,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
@@ -29,7 +29,7 @@ jobs:
 
       - name: Run LLM Review Script
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}   # 这里必须是 GH_PAT
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }} # 这里必须是 GH_PAT
           LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
         run: |
           python scripts/llm_review.py
