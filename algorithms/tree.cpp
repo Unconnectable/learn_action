@@ -12,28 +12,33 @@ using std::pair;
 using std::set;
  
 struct DSU {
-  map<int, int> father;
+  std::map<int, int> father;
+  std::map<int, int> size_;
+
   int find(int i) {
     if (father.find(i) == father.end()) {
       father[i] = i;
+      size_[i] = 1;
       return i;
     }
-    if (father[i] == i)
-      return i;
-    else {
-      // return father[i] = find(father[i]);
- 
-      while (i != father[i]) {
-        i = father[i];
-      }
-      return i;
+    if (father[i] != i) {
+      father[i] = find(father[i]);
     }
+    return father[i];
   }
+
   void unite(int u, int v) {
-    int father_u = find(u);
-    int father_v = find(v);
-    if (father_v != father_u) {
-      father[v] = father_u;
+    int root_u = find(u);
+    int root_v = find(v);
+
+    if (root_u != root_v) {
+      if (size_[root_u] < size_[root_v]) {
+        father[root_u] = root_v;
+        size_[root_v] += size_[root_u];
+      } else {
+        father[root_v] = root_u;
+        size_[root_u] += size_[root_v];
+      }
     }
   }
 };
