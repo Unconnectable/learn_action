@@ -1,0 +1,32 @@
+name: LLM Code Reviewer (Commit & PR)
+
+# 同时监听 push（commit）和 pull_request（PR）
+on:
+  push:
+    branches:
+      - main     # 当提交到 main 分支时触发
+  pull_request:
+    types: [opened, synchronize]  # PR 打开或更新时触发
+
+jobs:
+  llm-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests pygithub
+
+      - name: Run LLM Review Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
+        run: |
+          python .github/scripts/llm_review.py
