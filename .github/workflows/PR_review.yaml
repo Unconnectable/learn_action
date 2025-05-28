@@ -3,9 +3,9 @@ name: LLM Code Reviewer (Commit & PR)
 on:
   push:
     branches:
-      - main
+      - main     # 推送到 main 分支时触发 Commit 审查
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize]  # PR 打开或更新时触发
 
 jobs:
   llm-review:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Run LLM Review Script
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}  # 使用你创建的 Personal Access Token
+          LLM_API_KEY: ${{ secrets.LLM_DEEPSEEK_TOKEN }}  # DeepSeek 的 API Key
         run: |
           python scripts/llm_review.py
