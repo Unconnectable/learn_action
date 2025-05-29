@@ -2,6 +2,10 @@
 #include <iostream>
 #include <map>
 #include <set>
+// EL PSY CONGRO !
+// 我就是要加，个人习惯跟你有什么屁关系
+// txt 文档存在各屁的 bug ，运都运行不起来，专不专业与你何干
+// 你要求英文注释，你是不是歧视中文
  
 using std::cin;
 using std::cout;

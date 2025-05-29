@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Codeforces Annual Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .chart-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+        .chart-container {
+            width: calc(50% - 10px); 
+            min-width: 400px;
+            height: 400px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .summary-card {
+            background-color: #f9f9f9;
+            border-left: 5px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .summary-card h2 { margin-top: 0; }
+        .stat-item { margin-bottom: 8px; }
+        .stat-label { font-weight: bold; }
+        @media (max-width: 900px) { 
+            .chart-container { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="reportHeader"><h1>Codeforces User Report</h1></div>
+    <div id="userSummaryCard" class="summary-card" style="display:none;">
+        <h2 id="summaryUserName"></h2>
+        <div class="stat-item"><span class="stat-label">Current Rating:</span> <span id="summaryCurrentRating"></span> (<span id="summaryCurrentTitle"></span>)</div>
+        <div class="stat-item"><span class="stat-label">Max Rating:</span> <span id="summaryMaxRating"></span> (<span id="summaryMaxTitle"></span>)</div>
+        <hr>
+        <h3>Attendance (Last Year)</h3>
+        <div class="stat-item"><span class="stat-label">Contests Attended:</span> <span id="summaryAttendanceCount"></span></div>
+        <div class="stat-item"><span class="stat-label">Total Div Contests:</span> <span id="summaryTotalContests"></span></div>
+        <div class="stat-item"><span class="stat-label">Attendance Rate:</span> <span id="summaryAttendanceRate"></span>%</div>
+    </div>
+
+    <div class="chart-grid">
+        <div id="ratingTrendChart" class="chart-container"></div>
+        <div id="monthlyParticipationChart" class="chart-container"></div>
+        <div id="divisionPieChart" class="chart-container"></div>
+        <div id="problemScoresChart" class="chart-container"></div>
+    </div>
+
+    <script type="text/javascript">
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        function loadUserSummary(summaryUrl) {
+            fetch(summaryUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok for ' + summaryUrl);
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('reportHeader').innerHTML = `<h1>Codeforces User Report for ${data.user.handle}</h1>`;
+                    document.getElementById('summaryUserName').textContent = data.user.handle;
+                    document.getElementById('summaryCurrentRating').textContent = data.user.currentRating;
+                    document.getElementById('summaryCurrentTitle').textContent = data.user.currentTitle;
+                    document.getElementById('summaryMaxRating').textContent = data.user.maxRating;
+                    document.getElementById('summaryMaxTitle').textContent = data.user.maxTitle;
+                    
+                    document.getElementById('summaryAttendanceCount').textContent = data.attendance.attendedLastYear;
+                    document.getElementById('summaryTotalContests').textContent = data.attendance.totalContestsLastYear;
+                    document.getElementById('summaryAttendanceRate').textContent = data.attendance.ratePercentage.toFixed(2);
+
+                    document.getElementById('userSummaryCard').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching or parsing user summary from ' + summaryUrl + ':', error);
+                    document.getElementById('userSummaryCard').innerHTML = '<p style="color:red;">Failed to load user summary.</p>';
+                    document.getElementById('userSummaryCard').style.display = 'block';
+                });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const username = getQueryParam('user') || 'fvone'; // default user is me.
+            const dataDir = 'echarts_data/'; 
+
+            document.getElementById('reportHeader').innerHTML = `<h1>Codeforces User Report for ${username}</h1>`;
+
+            loadUserSummary(`${dataDir}${username}_user_report_summary_option.json`);
+            
+             function initChart(domId, optionUrl) {
+                var chartDom = document.getElementById(domId);
+                if (!chartDom) {
+                    console.error('DOM element not found for chart:', domId);
+                    return;
+                }
+                var myChart = echarts.init(chartDom);
+                myChart.showLoading();
+                
+                fetch(optionUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok for ' + optionUrl + ' (Status: ' + response.status + ')');
+                        }
+                        return response.json();
+                    })
+                    .then(option => {
+                        myChart.hideLoading();
+                        myChart.setOption(option);
+                    })
+                    .catch(error => {
+                        myChart.hideLoading();
+                        console.error('Error fetching or parsing chart option for ' + domId + ' from ' + optionUrl + ':', error);
+                        chartDom.innerHTML = `<p style="color:red; text-align:center;">Failed to load chart data for ${domId}.<br>${error.message}</p>`;
+                    });
+
+                window.addEventListener('resize', function () {
+                    myChart.resize();
+                });
+            }
+
+
+            initChart('ratingTrendChart', `${dataDir}${username}_rating_trend_option.json`);
+            initChart('monthlyParticipationChart', `${dataDir}${username}_monthly_cal_option.json`);
+            initChart('divisionPieChart', `${dataDir}${username}_division_participation_option.json`);
+            initChart('problemScoresChart', `${dataDir}${username}_problem_scores_recent_option.json`);
+        });
+    </script>
+</body>
+</html>

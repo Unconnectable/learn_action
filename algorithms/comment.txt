@@ -1,0 +1,60 @@
+能哭的地方，只有厕所和爸爸怀里。
+
+Socket (基类)
+├── DatagramSocket
+│   ├── UDPSocket 
+│   ├── PacketSocket
+│   └── LocalDatagramSocket
+└── TCPSocket
+    └── LocalStreamSocket
+
+封装的函数:
+- bind(): 绑定地址
+- connect(): 连接到对端
+- shutdown(): 关闭连接
+- local_address(): 获取本地地址 
+- peer_address(): 获取对端地址
+
+
+void get_URL( const string& host, const string& path )
+{
+  cerr << "Function called: get_URL(" << host << ", " << path << ")\n";
+  cerr << "Warning: get_URL() has not been implemented yet.\n";
+  TCPSocket socket;
+  Address address( host, "http");
+  socket.connect( address );
+  socket.write( "GET " + path + " HTTP/1.1\r\n");
+  socket.write( "Host: " + host + "\r\n");
+  socket.write( "Connection: close\r\n");
+  socket.write( "\r\n");
+  while(true){
+    string buffer;
+    socket.read( buffer );
+    std::cout<<buffer;
+    if(buffer.empty()){
+      break;
+    }
+  }
+  socket.shutdown(SHUT_RDWR);
+  socket.close();
+}
+
+
+
+寒蝉凄切，对长亭晚，骤雨初歇。
+
+都门帐饮无绪，留恋处，兰舟催发。
+
+执手相看泪眼，竟无语凝噎。
+
+念去去，千里烟波，暮霭沉沉楚天阔。
+
+多情自古伤离别，更那堪，冷落清秋节！
+
+今宵酒醒何处？杨柳岸，晓风残月。
+
+此去经年，应是良辰好景虚设。
+
+纵有千种风情，更与何人说？ 
+
+QAQ
